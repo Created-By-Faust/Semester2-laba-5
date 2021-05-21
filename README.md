@@ -1,0 +1,492 @@
+#include <stdio.h>
+#include <malloc.h>
+#include <string.h>
+#include <stdlib.h>
+#include <math.h>
+int getStr(char *a) {
+    int n;
+    do {
+        n = scanf("%[^\n]", a);
+        if (n == 0) {
+            printf("Error in input flow, try again\n");
+            n = scanf("%[^\n]", a);
+        }
+    } while (n == 0);
+    scanf("%*c");
+    if (n < 0) {
+        printf("Unknown error.");
+        return 1;
+    }
+    return 0;
+}
+int getInt(int *a) {
+    int n;
+    do {
+        n = scanf("%d", a);
+        if (n == 0) {
+            printf("Error in input flow, try again\n");
+            scanf("%*s");
+        }
+    } while (n == 0);
+    scanf("%*c");
+    if (n < 0) {
+        printf("Unknown error.");
+        return 1;
+    }
+    return 0;
+}
+int getFloat(float *a) {
+    int n;
+    do {
+        n = scanf("%f", a);
+        if (n == 0) {
+            printf("Error in input flow, try again\n");
+            scanf("%*s");
+        }
+    } while (n == 0);
+    scanf("%*c");
+    if (n < 0) {
+        printf("Unknown error.");
+        return 1;
+    }
+    return 0;
+}
+typedef struct edge {
+    char *a;
+    char *b;
+    int len;
+    struct edge *next;
+} Edge;
+typedef struct node {
+    int x;
+    int y;
+    char *name;
+    struct node *next;
+} Node;
+typedef struct graph {
+    Node *nodes;
+    Edge *edges;
+} Graph;
+char *copy_str(char *str) {
+    size_t len = strlen(str);
+    char *newStr = malloc(len);
+    strcpy(newStr, str);
+    return newStr;
+}
+void free_node(Node *node) {
+    free(node->name);
+    free(node);
+}
+Graph *add_node(Graph *graph, int x, int y, char *name) {
+    Node *node = malloc(sizeof(Node));
+    node->name = copy_str(name);
+    node->x = x;
+    node->y = y;
+    node->next = 0;
+    if (!graph->nodes) {
+        graph->nodes = node;
+    } else {
+        Node *iter = graph->nodes;
+        for (; iter; iter = iter->next) {
+            if (!strcmp(iter->name, name) || (iter->x == x && iter->y == y)) {
+                printf("ERROR: THIS NODE IS ALREADY PRESENT IN THE GRAPH\n");
+                free_node(node);
+                return graph;
+            }
+            if (!iter->next) {
+                iter->next = node;
+                break;
+            }
+        }
+    }
+    return graph;
+}
+Graph *add_edge(Graph *graph, char *name1, char *name2) {
+    if (!strcmp(name1, name2)) {
+        printf("ERROR: GRAPH SHOULD BE ACYCLIC\n");
+        return graph;
+    }
+    Edge *newLink = malloc(sizeof(Edge));
+    newLink->a = copy_str(name1);
+    newLink->b = copy_str(name2);
+    newLink->next = 0;
+    Node *node1 = 0, *node2 = 0;
+    for (Node *iter = graph->nodes; iter; iter = iter->next) {
+        if (!strcmp(iter->name, name1)) {
+            node1 = iter;
+        }
+        if (!strcmp(iter->name, name2)) {
+            node2 = iter;
+        }
+    }
+    if ((!node1) || (!node2)) {
+        printf("ERROR: NOT FOUND\n");
+        return graph;
+    }
+    newLink->len = (int) sqrt(pow((node2->x - node1->x), 2) + pow((node2->y - node1->y), 2));
+    if (!graph->edges) {
+        graph->edges = newLink;
+    } else {
+        for (Edge *iter = graph->edges; iter; iter = iter->next) {
+            if (
+                    (!strcmp(iter->a, name1) && !strcmp(iter->b, name2)) ||
+                    (!strcmp(iter->b, name1) && !strcmp(iter->a, name2))
+                    ) {
+                printf("ERROR: THIS EDGE ALREADY PRESENT IN THE GRAPH\n");
+                return graph;
+            }
+            if (!iter->next) {
+                iter->next = newLink;
+                break;
+            }
+        }
+    }
+    return graph;
+}
+void remove_node(Graph *graph, char *name) {
+    int found = 0;
+    if (graph->nodes) {
+        for (Node *iter = graph->nodes, *prev = graph->nodes; iter; prev = iter, iter = iter->next) {
+            if (!strcmp(iter->name, name)) {
+                prev->next = iter->next;
+                free_node(iter);
+                found = 1;
+                break;
+            }
+        }
+    }
+    if (!found) {
+        printf("ERROR: NODE NOT FOUND\n");
+        return;
+    }
+    if (graph->edges) {
+        for (Edge *iter = graph->edges, *prev = graph->edges; iter; prev = iter, iter = iter->next) {
+            if (!strcmp(iter->a, name) || !strcmp(iter->b, name)) {
+                prev->next = iter->next;
+                free(iter->a);
+                free(iter->b);
+                iter = prev;
+            }
+        }
+    }
+}
+void remove_edge(Graph *graph, char *str, char *str2) {
+    if (graph->edges) {
+        for (Edge *iter = graph->edges, *prev = graph->edges; iter; prev = iter, iter = iter->next) {
+            if (
+                    (!strcmp(iter->a, str) && !strcmp(iter->b, str2)) ||
+                    (!strcmp(iter->b, str) && !strcmp(iter->a, str2))
+                    ) {
+                prev->next = iter->next;
+                free(iter->a);
+                free(iter->b);
+                return;
+            }
+        }
+    }
+    printf("ERROR: EDGE NOT FOUND\n");
+}
+void print(Graph *graph) {
+    if (!graph->nodes)
+        return;
+    printf("\t");
+    for (Node *iter = graph->nodes; iter; iter = iter->next) {
+        printf("%s\t", iter->name);
+    }
+    printf("\n");
+    for (Node *iter = graph->nodes; iter; iter = iter->next) {
+        printf("%s\t", iter->name);
+        for (Node *iter2 = graph->nodes; iter2; iter2 = iter2->next) {
+            if (!strcmp(iter->name, iter2->name)) {
+                printf("0\t");
+                continue;
+            }
+            int printed = 0;
+            for (Edge *edge = graph->edges; edge; edge = edge->next) {
+                if (
+                        (!strcmp(edge->a, iter2->name) || !strcmp(edge->b, iter2->name))
+                        && (!strcmp(edge->a, iter->name) || !strcmp(edge->b, iter->name))
+                        ) {
+                    printed = 1;
+                    printf("%d\t", edge->len);
+                    break;
+                }
+            }
+            if (!printed)
+                printf("0\t");
+        }
+        printf("\n");
+    }
+}
+Node *search(Graph *graph, char *name) {
+    if (graph->nodes) {
+        for (Node *iter = graph->nodes; iter; iter = iter->next) {
+            if (!strcmp(iter->name, name)) {
+                return iter;
+            }
+        }
+    }
+    return 0;
+}
+int dfs_search(Graph *graph, char *src_name, char *dst_name, char *from) {
+    if (!strcmp(src_name, dst_name)) {
+        Node *found = search(graph, dst_name);
+        if (found) {
+            printf("Node (%d %d %s)\n", found->x, found->y, found->name);
+        }
+        return 1;
+    }
+    for (Edge *iter = graph->edges; iter; iter = iter->next) {
+        if (!strcmp(iter->a, src_name) && strcmp(iter->b, from) != 0) {
+            if (dfs_search(graph, iter->b, dst_name, iter->a))
+                return 1;
+        }
+        if (!strcmp(iter->b, src_name) && strcmp(iter->a, from) != 0) {
+            if (dfs_search(graph, iter->a, dst_name, iter->b))
+                return 1;
+        }
+    }
+    return 0;
+}
+typedef struct StrListElem {
+    char *str;
+    struct StrListElem *next;
+} StrListElem;
+StrListElem *str_list_append(StrListElem *head, char *str) {
+    if (!head) {
+        head = malloc(sizeof(StrListElem));
+        head->str = str;
+        head->next = 0;
+    } else {
+        StrListElem *elem;
+        for (; elem->next; elem = elem->next);
+        elem->next = malloc(sizeof(StrListElem));
+        elem = elem->next;
+        elem->str = str;
+        elem->next = 0;
+    }
+    return head;
+}
+int str_list_contains(StrListElem *list, char *str) {
+    if (!list) {
+        return 0;
+    }
+    for (StrListElem *iter = list; iter->next; iter = iter->next) {
+        if (!strcmp(iter->str, str)) {
+            return 1;
+        }
+    }
+    return 0;
+}
+int check_cycles(Graph *graph, StrListElem *list, char *src_name, char *from) {
+    if (str_list_contains(list, src_name)) {
+        return 1;
+    } else {
+        list = str_list_append(list, src_name);
+    }
+    for (Edge *iter = graph->edges; iter; iter = iter->next) {
+        if (!strcmp(iter->a, src_name) && strcmp(iter->b, from) != 0) {
+            if (check_cycles(graph, list, iter->b, iter->a))
+                return 1;
+        }
+        if (!strcmp(iter->b, src_name) && strcmp(iter->a, from) != 0) {
+            if (check_cycles(graph, list, iter->a, iter->b))
+                return 1;
+        }
+    }
+    return 0;
+}
+int check_cycles_wr(Graph *graph) {
+    for (Node *iter = graph->nodes; iter; iter = iter->next) {
+        if (check_cycles(graph, 0, iter->name, iter->name))
+            return 1;
+    }
+    return 0;
+}
+Node *append(Node *head, Node *node) {
+    if (!head) {
+        head = malloc(sizeof(Node));
+        head->name = node->name;
+        head->x = node->x;
+        head->y = node->y;
+        head->next = 0;
+    } else {
+        Node *elem = head;
+        for (; elem->next; elem = elem->next);
+        elem->next = malloc(sizeof(Node));
+        elem = elem->next;
+        elem->name = node->name;
+        elem->x = node->x;
+        elem->y = node->y;
+        elem->next = 0;
+    }
+    return head;
+}
+typedef struct DijkstraNode {
+    Node *node;
+    int dst;
+    int visited;
+} DijkstraNode;
+int is_dijkstra_node_array_full_visited(DijkstraNode *array, int count) {
+    for (int i = 0; i < count; ++i) {
+        if (!array[i].visited) {
+            return 0;
+        }
+    }
+    return 1;
+}
+DijkstraNode *node_with_min_dist(DijkstraNode *array, int count) {
+    int min_dist = -1;
+    DijkstraNode *min_node = 0;
+    for (int i = 0; i < count; ++i) {
+        if (min_dist == -1 && !(array[i].visited)) {
+            min_dist = array[i].dst;
+            min_node = &array[i];
+        }
+        if (!(array[i].visited) && min_dist > array[i].dst && array[i].dst != -1) {
+            min_dist = array[i].dst;
+            min_node = &array[i];
+        }
+    }
+    return min_node;
+}
+DijkstraNode *dijkstra_node_by_name(DijkstraNode *array, int count, char *name) {
+    for (int i = 0; i < count; ++i) {
+        if (!strcmp(array[i].node->name, name)) {
+            return &array[i];
+        }
+    }
+    return 0;
+}
+// Search the shortest path between src node and dst node
+int dijkstra(Graph *graph, char *src, char *dst) {
+    int count = 0;
+    for (Node *iter = graph->nodes; iter; iter = iter->next) {
+        count++;
+    }
+    DijkstraNode nodes[count];
+    Node *iter = graph->nodes;
+    for (int i = 0; i < count; iter = iter->next, i++) {
+        nodes[i] = (DijkstraNode) {iter, -1, 0};
+        if (!strcmp(iter->name, src)) {
+            nodes[i].dst = 0;
+        }
+    }
+    while (!is_dijkstra_node_array_full_visited(nodes, count)) {
+        DijkstraNode *min = node_with_min_dist(nodes, count);
+        min->visited = 1;
+        if (min->dst == -1)
+            continue;
+        for (Edge *edge = graph->edges; edge; edge = edge->next) {
+            char *neighbor_name = 0;
+            if (!strcmp(edge->a, min->node->name)) {
+                neighbor_name = edge->b;
+            }
+            if (!strcmp(edge->b, min->node->name)) {
+                neighbor_name = edge->a;
+            }
+            if (neighbor_name) {
+                DijkstraNode *neighbor = dijkstra_node_by_name(nodes, count, neighbor_name);
+                int new_dst = min->dst + edge->len;
+                if (new_dst < neighbor->dst || neighbor->dst == -1) {
+                    neighbor->dst = new_dst;
+                }
+            }
+        }
+    }
+    DijkstraNode *target_node = dijkstra_node_by_name(nodes, count, dst);
+    return target_node->dst;
+}
+int main() {
+    char str[256], str2[256];
+    char *fin_str;
+    int buf, key;
+    size_t len;
+    Graph *graph = malloc(sizeof(Graph));
+    graph->nodes = 0;
+    graph->edges = 0;
+    int x, y;
+    do {
+        printf("1 - add node\n"
+               "2 - add edge\n"
+                "3 - remove node\n"
+                "4 - remove edge\n"
+                "5 - print\n"
+                "6 - DFS search\n"
+                "7 - Dijkstra search\n"
+                "8 - check cycles\n"
+                "0 - exit\n");
+         if (getInt(&buf)) {
+             return 0;
+        }
+        switch (buf) {
+            case 1:
+                if (getInt(&x)) {
+                    return 0;
+                }
+                if (getInt(&y)) {
+                    return 0;
+                }
+                if (getStr(str)) {
+                    return 0;
+                }
+                graph = add_node(graph, x, y, str);
+                break;
+            case 2:
+                if (getStr(str)) {
+                    return 0;
+                }
+                if (getStr(str2)) {
+                    return 0;
+                }
+                graph = add_edge(graph, str, str2);
+                break;
+            case 3:
+                if (getStr(str)) {
+                    return 0;
+                }
+                remove_node(graph, str);
+                break;
+            case 4:
+                if (getStr(str)) {
+                    return 0;
+                }
+                if (getStr(str2)) {
+                    return 0;
+                }
+                remove_edge(graph, str, str2);
+                break;
+            case 5:
+                print(graph);
+                break;
+            case 6:
+                if (getStr(str)) {
+                    return 0;
+                }
+                if (getStr(str2)) {
+                    return 0;
+                }
+                if (!dfs_search(graph, str, str2, str)) {
+                    printf("DFS NOT FOUND\n");
+                }
+                break;
+            case 7:
+                if (getStr(str)) {
+                    return 0;
+                }
+                if (getStr(str2)) {
+                    return 0;
+                }
+                printf("%d\n", dijkstra(graph, str, str2));
+                break;
+            case 8:
+                if (check_cycles_wr(graph)) {
+                    printf("CYCLE DETECTED\n");
+                }
+                break;
+            case 0:
+                return 0;
+        }
+        printf("\n");
+    } while (1);
+}
