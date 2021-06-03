@@ -1,5 +1,4 @@
 #include <stdio.h>
-#include <malloc.h>
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
@@ -155,7 +154,7 @@ Graph *add_edge(Graph *graph, char *name1, char *name2) {
 }
 
 void delete_node_from_ll(Node **head_ref, char *name) {
-    Node *temp = *head_ref, *prev;
+    Node *temp = *head_ref, *prev = NULL;
     if (temp != 0 && !strcmp(temp->name, name)) {
         *head_ref = temp->next;
         free_node(temp);
@@ -178,7 +177,7 @@ void delete_node_from_ll(Node **head_ref, char *name) {
 }
 
 void delete_edge_from_ll(Edge **head_ref, char *name) {
-    Edge *temp = *head_ref, *prev;
+    Edge *temp = *head_ref, *prev = NULL;
     if (temp != 0 && (!strcmp(temp->a, name) || !strcmp(temp->b, name))) {
         *head_ref = temp->next;
         free(temp);
@@ -216,7 +215,7 @@ int edge_matches(Edge *edge, char *str, char *str2) {
 
 void remove_edge(Graph *graph, char *str, char *str2) {
     Edge **head_ref = &graph->edges;
-    Edge *temp = *head_ref, *prev;
+    Edge *temp = *head_ref, *prev = NULL;
     if (temp != 0 && edge_matches(temp, str, str2)) {
         *head_ref = temp->next;
         free(temp);
@@ -294,7 +293,7 @@ StrListElem *str_list_append(StrListElem *head, char *str) {
         head->next = 0;
     } else {
         StrListElem *elem;
-        for (; elem->next; elem = elem->next);
+        for (elem = head; elem->next; elem = elem->next);
         elem->next = malloc(sizeof(StrListElem));
         elem = elem->next;
         elem->str = str;
@@ -473,9 +472,7 @@ int dijkstra(Graph *graph, char *src, char *dst) {
 
 int main() {
     char str[256], str2[256];
-    char *fin_str;
-    int buf, key;
-    size_t len;
+    int buf;
     Graph *graph = malloc(sizeof(Graph));
     graph->nodes = 0;
     graph->edges = 0;
